@@ -40,31 +40,89 @@ function handleFormSubmit(e) {
   }
 }
 
-// ===== PRODUCT FILTER (san-pham.html) =====
-const filterBtns = document.querySelectorAll('.tml-filter-btn');
+// ===== PRODUCT FILTER + PAGINATION (san-pham.html) =====
+const filterBtns   = document.querySelectorAll('.tml-filter-btn');
 const productItems = document.querySelectorAll('.product-item');
+const paginationEl = document.getElementById('productPagination');
+
+const ITEMS_PER_PAGE = 6;
+let currentPage     = 1;
+let currentFilter   = 'all';
+
+function getVisibleItems() {
+  return Array.from(productItems).filter(item => {
+    if (currentFilter === 'all') return true;
+    return item.getAttribute('data-category') === currentFilter;
+  });
+}
+
+function renderPage(page) {
+  const visible = getVisibleItems();
+  const totalPages = Math.ceil(visible.length / ITEMS_PER_PAGE);
+  currentPage = Math.max(1, Math.min(page, totalPages));
+
+  const start = (currentPage - 1) * ITEMS_PER_PAGE;
+  const end   = start + ITEMS_PER_PAGE;
+
+  // Show/hide items
+  productItems.forEach(item => item.classList.add('hidden'));
+  visible.forEach((item, idx) => {
+    if (idx >= start && idx < end) {
+      item.classList.remove('hidden');
+      item.style.animation = 'fadeInUp .35s ease';
+    }
+  });
+
+  // Render pagination buttons
+  if (!paginationEl) return;
+  if (totalPages <= 1) { paginationEl.innerHTML = ''; return; }
+
+  let html = '<nav aria-label="Phân trang sản phẩm"><ul class="pagination justify-content-center mb-0">';
+
+  // Prev
+  html += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+    <button class="page-link tml-page-link" onclick="goToPage(${currentPage - 1})" aria-label="Trang trước">
+      <i class="bi bi-chevron-left"></i>
+    </button></li>`;
+
+  // Pages
+  for (let i = 1; i <= totalPages; i++) {
+    html += `<li class="page-item ${i === currentPage ? 'active' : ''}">
+      <button class="page-link tml-page-link" onclick="goToPage(${i})">${i}</button></li>`;
+  }
+
+  // Next
+  html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+    <button class="page-link tml-page-link" onclick="goToPage(${currentPage + 1})" aria-label="Trang sau">
+      <i class="bi bi-chevron-right"></i>
+    </button></li>`;
+
+  html += '</ul></nav>';
+  paginationEl.innerHTML = html;
+}
+
+function goToPage(page) {
+  renderPage(page);
+  // Scroll nhẹ về đầu lưới sản phẩm
+  const grid = document.getElementById('products');
+  if (grid) grid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
 
 if (filterBtns.length > 0) {
   filterBtns.forEach(btn => {
     btn.addEventListener('click', () => {
-      // Update active button
       filterBtns.forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-
-      const filter = btn.getAttribute('data-filter');
-
-      productItems.forEach(item => {
-        if (filter === 'all' || item.getAttribute('data-category') === filter) {
-          item.classList.remove('hidden');
-          // subtle fade-in
-          item.style.animation = 'fadeInUp .4s ease';
-        } else {
-          item.classList.add('hidden');
-        }
-      });
+      currentFilter = btn.getAttribute('data-filter');
+      currentPage   = 1;
+      renderPage(1);
     });
   });
+
+  // Khởi tạo lần đầu
+  renderPage(1);
 }
+
 
 // ===== SCROLL REVEAL (lightweight) =====
 const revealObserver = new IntersectionObserver((entries) => {
